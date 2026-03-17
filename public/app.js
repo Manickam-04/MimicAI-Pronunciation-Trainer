@@ -98,8 +98,9 @@ async function init() {
     return;
   }
 
-  populateVoices(langSelect.value);
-  renderPhraseGrid(langSelect.value);
+  currentLang = langSelect.value;
+  populateVoices(currentLang);
+  renderPhraseGrid(currentLang);
 
   langSelect.addEventListener('change', () => {
     currentLang = langSelect.value;
@@ -450,11 +451,72 @@ async function onRecordStop() {
     phUser.classList.add('hidden');
     userDur.textContent  = formatDuration(userBuffer.duration);
     btnPlayUser.disabled = false;
-    recordHint.textContent = 'Listen to both tracks, then check your score';
-    computeScore();
-  } catch {
+    
+    // Send to backend for AI scoring
+    await getAIScore(blob);
+    
+  } catch (err) {
+    console.error(err);
     toast('Could not process your recording — try again');
     recordHint.textContent = 'Try recording again';
+  }
+}
+
+async function getAIScore(audioBlob) {
+  recordHint.innerHTML = `<span class="loading-spinner-small"></span> Evaluating your pronunciation…`;
+  
+  // Preliminary rhythm/volume check from local data
+  const userSecs = userBuffer.duration;
+  let rhythm = 0;
+  if (nativeBuffer) {
+    const nativeSecs = nativeBuffer.duration;
+    const ratio = userSecs / nativeSecs;
+    const rhythmRatio = ratio > 1 ? (nativeSecs / userSecs) : ratio;
+    rhythm = Math.round(rhythmRatio * 100);
+  }
+  const data = userBuffer.getChannelData(0);
+  const peak = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+  let volume = Math.min(100, Math.round(peak * 120));
+
+  // Ensure data is synced right before the call
+  currentLang = langSelect.value;
+
+  const formData = new FormData();
+  formData.append('audio', audioBlob);
+  formData.append('targetText', selectedPhrase);
+  formData.append('rhythm', rhythm);
+  formData.append('volume', volume);
+  formData.append('language', currentLang);
+
+  try {
+    const res = await fetch('/api/score', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Backend scoring failed');
+    }
+    
+    const result = await res.json();
+    
+    // If the AI found nothing or volume is virtually zero
+    if (!result.transcript || result.transcript.trim().replace(/[.]/g, '') === '' || (result.accuracy === 0 && result.volume < 10)) {
+        showScorePanelZero(result.volume < 5 ? 'No Voice Found' : 'Voice Not Clear', '#ff5c5c', 'Please speak clearly and try again.', result.rhythm, 0, result.volume);
+        recordHint.textContent = result.volume < 5 ? 'No voice detected' : 'Voice was not clear';
+    } else {
+        recordHint.textContent = 'Listen to both tracks, then check your score';
+        showScore(result.overall, result.rhythm, result.accuracy, result.volume);
+    }
+
+    if (result.transcript) {
+        console.log("AI Heard (" + currentLang + "):", result.transcript);
+    }
+
+  } catch (err) {
+    toast('AI Scoring Error: ' + err.message);
+    recordHint.textContent = 'Check your connection and try again';
   }
 }
 
@@ -498,71 +560,7 @@ function clearCanvas(canvas) {
 }
 
 // ─── Scoring ─────────────────────────────────────────────────
-function computeScore() {
-  if (!userBuffer) return;
-  
-  const userSecs = userBuffer.duration;
-  let rhythm = 0;
-  
-  // Only calculate rhythm if we actually have the native speaker audio loaded
-  if (nativeBuffer) {
-    const nativeSecs = nativeBuffer.duration;
-    const ratio = userSecs / nativeSecs;
-    const rhythmRatio = ratio > 1 ? (nativeSecs / userSecs) : ratio;
-    rhythm = Math.round(rhythmRatio * 100);
-  }
-
-  // Volume: peak amplitude
-  const data = userBuffer.getChannelData(0);
-  const peak = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
-  let volume = Math.min(100, Math.round(peak * 120));
-  
-  // If the recording is incredibly short (< 0.6s) or very silent, it's not a valid attempt.
-  if (userSecs < 0.6 || peak < 0.02) {
-      rhythm = 0;
-      volume = Math.min(volume, 5); // heavily penalize volume if it's just background noise
-  }
-
-  // Accuracy: Web Speech API Transcript Match
-  let accuracy = 0;
-  if (!SpeechRec) {
-    accuracy = 0; // Don't give fake high scores if API is missing
-  } else {
-    const userText = (finalTranscript + ' ' + interimTranscript).trim().toLowerCase();
-    const targetText = selectedPhrase.toLowerCase();
-    const cleanTarget = targetText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
-
-    if (!userText || peak < 0.02 || userSecs < 0.6) {
-      // No text detected or clip too short/silent
-      accuracy = 0; 
-    } else {
-      const cleanUser = userText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
-      
-      if (cleanTarget.length === 0) {
-        accuracy = 0;
-      } else if (cleanUser.length === 0) {
-        accuracy = 0;
-      } else {
-        let matches = 0;
-        let matchedIndices = new Set();
-        for (const uw of cleanUser) {
-          for (let i = 0; i < cleanTarget.length; i++) {
-            if (!matchedIndices.has(i) && (cleanTarget[i] === uw || cleanTarget[i].includes(uw) || uw.includes(cleanTarget[i]))) {
-              matches++;
-              matchedIndices.add(i);
-              break;
-            }
-          }
-        }
-        accuracy = Math.round((matches / cleanTarget.length) * 100);
-        accuracy = Math.max(0, Math.min(100, accuracy));
-      }
-    }
-  }
-
-  const overall = Math.round(rhythm * 0.3 + accuracy * 0.5 + volume * 0.2);
-  showScore(overall, rhythm, accuracy, volume);
-}
+// (Local computeScore removed in favor of backend AI getAIScore)
 
 function showScorePanelZero(title, color, msg, rhythm, accuracy, volume) {
   scorePanel.classList.remove('hidden');

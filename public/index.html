@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MimicAI — Pronunciation Trainer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <header>
+    <div class="logo">
+      <span class="logo-mark"></span>
+      <span class="logo-text">MimicAI</span>
+    </div>
+    <div class="tagline">Powered by Murf Falcon TTS, Built with AI</div>
+  </header>
+
+  <main>
+
+    <!-- Step 1: Config Panel -->
+    <section class="panel config-panel" id="step-config">
+      <div class="step-label">01 — Setup</div>
+      <h2>Choose your language &amp; phrase that you want to practice</h2>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="lang-select">Language</label>
+          <div class="select-wrap">
+            <select id="lang-select">
+              <option value="ta-IN">Tamil</option>
+              <option value="mr-IN">Marathi</option>
+              <option value="hi-IN">Hindi</option>
+              <option value="en-IN">English (India)</option>
+              <option value="ja-JP">Japanese</option>
+              <option value="pt-BR">Portuguese (Brazil)</option>
+              <option value="de-DE">German</option>
+              <option value="fr-FR">French</option>
+              <option value="es-ES">Spanish (Spain)</option>
+              <option value="es-MX">Spanish (Mexico)</option>
+              <option value="it-IT">Italian</option>
+            </select>
+            <span class="select-arrow">↓</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="voice-select">Voice style</label>
+          <div class="select-wrap">
+            <select id="voice-select">
+              <option value="">Loading…</option>
+            </select>
+            <span class="select-arrow">↓</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="field">
+        <label for="custom-phrase">Type your own</label>
+        <input type="text" id="custom-phrase" placeholder="Type a phrase in any language…" maxlength="200"/>
+      </div>
+
+      <div class="field">
+        <label>Sample Phrase</label>
+        <div class="phrase-grid" id="phrase-grid">
+          <div class="loading-chips">Loading phrases…</div>
+        </div>
+      </div>
+
+      <div class="config-actions">
+        <button class="btn-primary" id="btn-continue">Continue →</button>
+      </div>
+    </section>
+
+    <!-- Step 2: Practice Panel -->
+    <section class="panel practice-panel hidden" id="step-practice">
+      <div class="step-label">02 — Practice</div>
+
+      <div class="phrase-container" id="phrase-container">
+        <div class="phrase-display" id="phrase-display"></div>
+        <div class="phrase-translation" id="phrase-translation"></div>
+      </div>
+
+      <div class="audio-section">
+        <div class="track-block">
+          <div class="track-header">
+            <span class="track-title">Native speaker</span>
+            <span class="track-badge native">Murf AI</span>
+          </div>
+          <div class="waveform-wrapper">
+            <canvas id="canvas-native" class="waveform"></canvas>
+            <div class="waveform-placeholder" id="placeholder-native">Press play to load</div>
+          </div>
+          <div class="track-controls">
+            <button class="btn-icon" id="btn-play-native" title="Play native audio">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
+            </button>
+            <div class="duration-label" id="native-duration">—</div>
+            <div class="select-wrap" style="margin-left: auto;">
+              <select id="native-speed" class="speed-select" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: inherit; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                <option value="1.0" style="background:#111">1.0x</option>
+                <option value="0.75" style="background:#111">0.75x</option>
+                <option value="0.5" style="background:#111">0.5x</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="track-divider"><span>vs</span></div>
+
+        <div class="track-block">
+          <div class="track-header">
+            <span class="track-title">Your attempt</span>
+            <span class="track-badge user">You</span>
+          </div>
+          <div class="waveform-wrapper">
+            <canvas id="canvas-user" class="waveform"></canvas>
+            <div class="waveform-placeholder" id="placeholder-user">Record to see your waveform</div>
+          </div>
+          <div class="track-controls">
+            <button class="btn-icon" id="btn-play-user" title="Play your recording" disabled>
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
+            </button>
+            <div class="duration-label" id="user-duration">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="record-zone">
+        <button class="btn-record" id="btn-record">
+          <span class="rec-icon"></span>
+          <span class="rec-label">Tap to record</span>
+        </button>
+        <p class="record-hint" id="record-hint">Tap the button to start recording</p>
+      </div>
+
+      <!-- Score Panel -->
+      <div class="score-panel hidden" id="score-panel">
+        <div class="score-ring-wrap">
+          <svg class="score-ring" viewBox="0 0 120 120">
+            <circle class="ring-bg"   cx="60" cy="60" r="50"/>
+            <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="50"/>
+          </svg>
+          <div class="score-number" id="score-number">0</div>
+        </div>
+        <div class="score-meta">
+          <div class="score-grade"   id="score-grade">—</div>
+          <div class="score-message" id="score-message"></div>
+        </div>
+        <div class="score-breakdown">
+          <div class="breakdown-item">
+            <span class="breakdown-label">Rhythm</span>
+            <div class="breakdown-bar"><div class="breakdown-fill" id="bar-rhythm"></div></div>
+            <span class="breakdown-val" id="val-rhythm">—</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Accuracy</span>
+            <div class="breakdown-bar"><div class="breakdown-fill" id="bar-accuracy"></div></div>
+            <span class="breakdown-val" id="val-accuracy">—</span>
+          </div>
+          <div class="breakdown-item">
+            <span class="breakdown-label">Volume</span>
+            <div class="breakdown-bar"><div class="breakdown-fill" id="bar-volume"></div></div>
+            <span class="breakdown-val" id="val-volume">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="practice-actions">
+        <button class="btn-secondary" id="btn-back">← Change phrase</button>
+        <button class="btn-secondary hidden" id="btn-try-again">Try again</button>
+        <button class="btn-primary   hidden" id="btn-next-phrase">Next phrase →</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <span class="app-name">MimicAI</span>
+      <span class="separator">|</span>
+      <span class="dev-names">Developed by Manicka Vinayagam &amp; Hrushabh with help of AI</span>
+    </div>
+  </footer>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -234,7 +234,10 @@ select:focus { border-color: var(--accent); }
 .btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
 .btn-icon svg { width: 14px; height: 14px; }
 .duration-label { font-size: 12px; color: var(--muted); }
-.track-divider { display: flex; align-items: center; justify-content: center; padding-top: 3rem; color: var(--muted); font-size: 13px; }
+.track-divider { display: flex; align-items: center; justify-content: center; padding: 1.5rem 0; color: var(--muted); font-size: 13px; }
+@media (min-width: 768px) {
+  .track-divider { padding: 3rem 0 0 0; } /* Only add top padding on desktop when horizontal */
+}
 
 /* ─── Record zone ────────────────────────────────────────── */
 .record-zone {
@@ -312,15 +315,25 @@ select:focus { border-color: var(--accent); }
 }
 
 /* ─── Responsive ─────────────────────────────────────────── */
-@media (max-width: 600px) {
-  header { padding: 1rem; }
-  main   { padding: 2rem 1rem 4rem; }
-  h2     { font-size: 1.5rem; }
+@media (max-width: 768px) {
   .field-row       { grid-template-columns: 1fr; }
   .audio-section   { grid-template-columns: 1fr; }
-  .track-divider   { padding: 0; }
-  .score-panel     { grid-template-columns: 1fr; }
+  .track-divider   { padding: 1rem 0; }
+  .track-divider span { display: none; } /* Hide the 'vs' text on stacked layout to save space */
+  .track-divider::after { content: ''; display: block; width: 1px; height: 24px; background: var(--border); }
+  .phrase-display  { font-size: 1.8rem; }
+}
+
+@media (max-width: 600px) {
+  header { padding: 1rem; flex-direction: column; gap: 0.5rem; text-align: center; }
+  main   { padding: 1.5rem 1rem 3rem; }
+  h2     { font-size: 1.5rem; margin-bottom: 1.5rem; }
+  .waveform-wrapper { height: 60px; } /* Slightly smaller waveform on mobile */
+  .score-panel     { grid-template-columns: 1fr; padding: 1.5rem; gap: 1.5rem; text-align: center;}
+  .score-meta      { align-self: center; }
   .score-ring-wrap { grid-row: auto; margin: 0 auto; }
   .score-breakdown { grid-column: 1; }
-  .phrase-display  { font-size: 1.5rem; }
+  .phrase-display  { font-size: 1.4rem; text-align: center; }
+  .phrase-translation { text-align: center; font-size: 1rem; margin: 0 auto; }
+  .practice-actions { justify-content: center; }
 }

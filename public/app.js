@@ -405,6 +405,12 @@ async function startRecord() {
     interimTranscript = '';
     if (recognition) {
       recognition.lang = currentLang;
+      // Restart recognition if it ends prematurely (common on mobile)
+      recognition.onend = () => {
+        if (isRecording) {
+            try { recognition.start(); } catch(err) {}
+        }
+      };
       try { recognition.start(); } catch(err) {}
     }
     mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() });
@@ -424,6 +430,7 @@ function stopRecord() {
   if (!isRecording || !mediaRecorder) return;
   mediaRecorder.stop();
   if (recognition) {
+    recognition.onend = null; // Prevent restart loops if we are stopping intentionally
     try { recognition.stop(); } catch(err) {}
   }
   mediaRecorder.stream.getTracks().forEach(t => t.stop());
@@ -506,7 +513,7 @@ function computeScore() {
   const volume = Math.min(100, Math.round(peak * 120));
 
   // If there's barely any volume, assume silence or only background room noise
-  if (peak < 0.02) {
+  if (peak < 0.015) { // Lowered slightly from 0.02 for quieter mobile mics
     showScorePanelZero('Not Detected', '#666', 'Voice not detected. Please speak closer to the microphone.', 0, 0, volume);
     return;
   }
@@ -518,40 +525,44 @@ function computeScore() {
   } else {
     const userText = (finalTranscript + ' ' + interimTranscript).trim().toLowerCase();
     
+    const targetText = selectedPhrase.toLowerCase();
+    const cleanTarget = targetText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
+
     // Check if the microphone picked up volume, but Speech API captured absolutely zero words
     if (!userText) {
-      showScorePanelZero('Not Clear', '#ff5c5c', 'Your voice is not clear. Background noise might be too loud or words are unintelligible.', rhythm, 0, volume);
-      return;
-    }
-
-    const targetText = selectedPhrase.toLowerCase();
-    
-    // strip punctuation (Unicode-aware if possible)
-    const cleanUser = userText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
-    const cleanTarget = targetText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
-    
-    if (cleanTarget.length === 0) {
-      accuracy = 100;
-    } else if (cleanUser.length === 0) {
-      showScorePanelZero('Not Clear', '#ff5c5c', 'Your voice is not clear. Background noise might be too loud or words are unintelligible.', rhythm, 0, volume);
-      return;
+      // Mobile Safari/Chrome often drops recognition. Instead of rejecting, give a fallback score based on rhythm/duration vs target phrase length.
+      if (cleanTarget.length > 0) {
+        // Fallback accuracy base simply applies a slightly generous rhythm score when we know they spoke
+        accuracy = Math.max(10, rhythm - 15);
+      } else {
+         accuracy = 100;
+      }
     } else {
-      let matches = 0;
-      let matchedIndices = new Set();
+      // strip punctuation (Unicode-aware if possible)
+      const cleanUser = userText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
       
-      for (const uw of cleanUser) {
-        for (let i = 0; i < cleanTarget.length; i++) {
-          if (!matchedIndices.has(i)) {
-            if (cleanTarget[i] === uw || cleanTarget[i].includes(uw) || uw.includes(cleanTarget[i])) {
-              matches++;
-              matchedIndices.add(i);
-              break;
+      if (cleanTarget.length === 0) {
+        accuracy = 100;
+      } else if (cleanUser.length === 0) {
+        accuracy = Math.max(10, rhythm - 15); // Fallback
+      } else {
+        let matches = 0;
+        let matchedIndices = new Set();
+        
+        for (const uw of cleanUser) {
+          for (let i = 0; i < cleanTarget.length; i++) {
+            if (!matchedIndices.has(i)) {
+              if (cleanTarget[i] === uw || cleanTarget[i].includes(uw) || uw.includes(cleanTarget[i])) {
+                matches++;
+                matchedIndices.add(i);
+                break;
+              }
             }
           }
         }
+        accuracy = Math.round((matches / cleanTarget.length) * 100);
+        accuracy = Math.max(10, Math.min(100, accuracy));
       }
-      accuracy = Math.round((matches / cleanTarget.length) * 100);
-      accuracy = Math.max(10, Math.min(100, accuracy));
     }
   }
 

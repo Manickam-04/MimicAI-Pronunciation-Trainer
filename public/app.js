@@ -500,68 +500,62 @@ function clearCanvas(canvas) {
 // ─── Scoring ─────────────────────────────────────────────────
 function computeScore() {
   if (!userBuffer) return;
-  const nativeSecs = nativeBuffer?.duration || userBuffer.duration;
-  const userSecs   = userBuffer.duration;
-
-  // Rhythm: duration ratio
-  const ratio  = Math.min(nativeSecs, userSecs) / Math.max(nativeSecs, userSecs);
-  const rhythm = Math.round(ratio * 100);
+  
+  const userSecs = userBuffer.duration;
+  let rhythm = 0;
+  
+  // Only calculate rhythm if we actually have the native speaker audio loaded
+  if (nativeBuffer) {
+    const nativeSecs = nativeBuffer.duration;
+    const ratio = userSecs / nativeSecs;
+    const rhythmRatio = ratio > 1 ? (nativeSecs / userSecs) : ratio;
+    rhythm = Math.round(rhythmRatio * 100);
+  }
 
   // Volume: peak amplitude
-  const data   = userBuffer.getChannelData(0);
-  const peak   = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
-  const volume = Math.min(100, Math.round(peak * 120));
-
-  // Remove early return for low volume. Just set accuracy to 0 and let the overall math run.
-  if (peak < 0.015) {
-      // Very low volume, meaning likely silence. 
-      // Accuracy becomes 0, but we still compute Rhythm and Volume.
+  const data = userBuffer.getChannelData(0);
+  const peak = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+  let volume = Math.min(100, Math.round(peak * 120));
+  
+  // If the recording is incredibly short (< 0.6s) or very silent, it's not a valid attempt.
+  if (userSecs < 0.6 || peak < 0.02) {
+      rhythm = 0;
+      volume = Math.min(volume, 5); // heavily penalize volume if it's just background noise
   }
 
   // Accuracy: Web Speech API Transcript Match
   let accuracy = 0;
   if (!SpeechRec) {
-    accuracy = Math.round(Math.random() * 20 + 70); // fallback heuristic
+    accuracy = 0; // Don't give fake high scores if API is missing
   } else {
     const userText = (finalTranscript + ' ' + interimTranscript).trim().toLowerCase();
-    
     const targetText = selectedPhrase.toLowerCase();
     const cleanTarget = targetText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
 
-    // Check if the microphone picked up volume, but Speech API captured absolutely zero words
-    if (!userText || peak < 0.015) {
-      // Mobile Safari/Chrome often drops recognition, or it's dead silence. Give a fallback score based on rhythm.
-      if (cleanTarget.length > 0) {
-        // Fallback accuracy base simply applies a slightly generous rhythm score when we know they spoke
-        accuracy = peak < 0.015 ? 0 : Math.max(10, rhythm - 15);
-      } else {
-         accuracy = 100;
-      }
+    if (!userText || peak < 0.02 || userSecs < 0.6) {
+      // No text detected or clip too short/silent
+      accuracy = 0; 
     } else {
-      // strip punctuation (Unicode-aware if possible)
       const cleanUser = userText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
       
       if (cleanTarget.length === 0) {
-        accuracy = 100;
+        accuracy = 0;
       } else if (cleanUser.length === 0) {
-        accuracy = Math.max(10, rhythm - 15); // Fallback
+        accuracy = 0;
       } else {
         let matches = 0;
         let matchedIndices = new Set();
-        
         for (const uw of cleanUser) {
           for (let i = 0; i < cleanTarget.length; i++) {
-            if (!matchedIndices.has(i)) {
-              if (cleanTarget[i] === uw || cleanTarget[i].includes(uw) || uw.includes(cleanTarget[i])) {
-                matches++;
-                matchedIndices.add(i);
-                break;
-              }
+            if (!matchedIndices.has(i) && (cleanTarget[i] === uw || cleanTarget[i].includes(uw) || uw.includes(cleanTarget[i]))) {
+              matches++;
+              matchedIndices.add(i);
+              break;
             }
           }
         }
         accuracy = Math.round((matches / cleanTarget.length) * 100);
-        accuracy = Math.max(10, Math.min(100, accuracy));
+        accuracy = Math.max(0, Math.min(100, accuracy));
       }
     }
   }

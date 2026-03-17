@@ -333,7 +333,16 @@ select:focus { border-color: var(--accent); }
   .score-meta      { align-self: center; }
   .score-ring-wrap { grid-row: auto; margin: 0 auto; }
   .score-breakdown { grid-column: 1; }
-  .phrase-display  { font-size: 1.4rem; text-align: center; }
   .phrase-translation { text-align: center; font-size: 1rem; margin: 0 auto; }
   .practice-actions { justify-content: center; }
 }
+
+/* ─── Loading Spinner ─────────────────────────────────────── */
+.loading-spinner-small {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.2); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  vertical-align: middle; margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+

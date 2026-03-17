@@ -4,20 +4,136 @@ const fetch    = require('node-fetch');
 const cors     = require('cors');
 const path     = require('path');
 
+const multer   = require('multer');
+const FormData = require('form-data');
+const fs       = require('fs');
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 const MURF_API_KEY = process.env.MURF_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 if (!MURF_API_KEY) {
-  console.error('\n❌  MURF_API_KEY is missing. Copy .env.example to .env and set your key.\n');
-  process.exit(1);
+  console.error('\n❌  MURF_API_KEY is missing. Set it in your .env file.\n');
 }
+
+// Multer setup for handling audio uploads (memory storage for quick processing)
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 app.use(express.json());
 
 // Serve the frontend from /public
 app.use(express.static(path.join(__dirname, 'public')));
+
+/* ─────────────────────────────────────────────────────────────
+   POST /api/score
+   Receives audio file and calculates accuracy using Groq Whisper
+───────────────────────────────────────────────────────────── */
+app.post('/api/score', upload.single('audio'), async (req, res) => {
+  const { targetText, rhythm, volume, language } = req.body;
+  const audioBuffer = req.file?.buffer;
+
+  if (!audioBuffer || !targetText) {
+    return res.status(400).json({ error: 'Audio and targetText are required' });
+  }
+
+  if (!GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not defined in .env');
+    return res.status(500).json({ error: 'Groq API key not configured on server' });
+  }
+
+  try {
+    console.log(`Received scoring request for: "${targetText}". Audio size: ${audioBuffer?.length} bytes. Language: ${language}`);
+    
+    // 1. Call Groq Whisper API for transcription
+    const form = new FormData();
+    form.append('file', audioBuffer, { filename: 'speech.mp3', contentType: 'audio/mpeg' });
+    form.append('model', 'whisper-large-v3');
+    
+    // Ensure we send the 2-letter ISO code (e.g., 'ta' for Tamil, 'hi' for Hindi)
+    if (language) {
+      const isoCode = language.split('-')[0].toLowerCase();
+      form.append('language', isoCode);
+    }
+
+    console.log(`Calling Groq Whisper API (v3)...`);
+    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        ...form.getHeaders(),
+      },
+      body: form,
+    });
+
+    if (!groqRes.ok) {
+      const err = await groqRes.json().catch(() => ({}));
+      console.error('Groq API Error Detail:', JSON.stringify(err, null, 2));
+      throw new Error(err.error?.message || `Groq API returned ${groqRes.status}`);
+    }
+
+    const groqData = await groqRes.json();
+    const transcript = (groqData.text || '').trim();
+    console.log(`AI Transcribed (${language}): "${transcript}"`);
+
+    // Clean transcript for comparison
+    const clean = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
+    const userWords = clean(transcript);
+    const targetWords = clean(targetText);
+
+    // If transcript is effectively empty or just "..."
+    if (userWords.length === 0) {
+      console.log('No clear voice detected in transcript.');
+      return res.json({
+        overall: 0,
+        accuracy: 0,
+        rhythm: parseInt(req.body.rhythm) || 0,
+        volume: parseInt(req.body.volume) || 0,
+        transcript: ''
+      });
+    }
+
+    // 2. Word matching logic...
+
+    let matches = 0;
+    const matchedIndices = new Set();
+
+    userWords.forEach(uw => {
+      for (let i = 0; i < targetWords.length; i++) {
+        // Match exact or very close word
+        if (!matchedIndices.has(i)) {
+          const tw = targetWords[i];
+          if (tw === uw || (tw.length > 3 && (tw.includes(uw) || uw.includes(tw)))) {
+            matches++;
+            matchedIndices.add(i);
+            break;
+          }
+        }
+      }
+    });
+
+    const accuracy = targetWords.length > 0 ? Math.round((matches / targetWords.length) * 100) : 100;
+
+    // 3. Overall weighted score
+    // rhythm and volume are sent from frontend (based on WebAudio analysis)
+    const r = parseInt(rhythm) || 0;
+    const v = parseInt(volume) || 0;
+    const overall = Math.round(r * 0.3 + accuracy * 0.5 + v * 0.2);
+
+    res.json({
+      overall,
+      accuracy,
+      rhythm: r,
+      volume: v,
+      transcript
+    });
+
+  } catch (err) {
+    console.error('Scoring error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /* ─────────────────────────────────────────────────────────────
    POST /api/tts

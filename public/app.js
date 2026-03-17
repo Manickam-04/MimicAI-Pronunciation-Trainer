@@ -512,10 +512,10 @@ function computeScore() {
   const peak   = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
   const volume = Math.min(100, Math.round(peak * 120));
 
-  // If there's barely any volume, assume silence or only background room noise
-  if (peak < 0.015) { // Lowered slightly from 0.02 for quieter mobile mics
-    showScorePanelZero('Not Detected', '#666', 'Voice not detected. Please speak closer to the microphone.', 0, 0, volume);
-    return;
+  // Remove early return for low volume. Just set accuracy to 0 and let the overall math run.
+  if (peak < 0.015) {
+      // Very low volume, meaning likely silence. 
+      // Accuracy becomes 0, but we still compute Rhythm and Volume.
   }
 
   // Accuracy: Web Speech API Transcript Match
@@ -529,11 +529,11 @@ function computeScore() {
     const cleanTarget = targetText.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
 
     // Check if the microphone picked up volume, but Speech API captured absolutely zero words
-    if (!userText) {
-      // Mobile Safari/Chrome often drops recognition. Instead of rejecting, give a fallback score based on rhythm/duration vs target phrase length.
+    if (!userText || peak < 0.015) {
+      // Mobile Safari/Chrome often drops recognition, or it's dead silence. Give a fallback score based on rhythm.
       if (cleanTarget.length > 0) {
         // Fallback accuracy base simply applies a slightly generous rhythm score when we know they spoke
-        accuracy = Math.max(10, rhythm - 15);
+        accuracy = peak < 0.015 ? 0 : Math.max(10, rhythm - 15);
       } else {
          accuracy = 100;
       }

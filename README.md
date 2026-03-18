@@ -13,16 +13,25 @@ MimicAI is an AI-powered pronunciation training web application that helps users
 ⚡ Real-Time Processing – Fast and responsive interaction
 🌐 Web-Based – No installation required
 
-🧠 How It Works
+🧠 How It Works:
+
 User enters a word/sentence
-System generates or provides a reference pronunciation (using murfAI)
+System generates or provides a reference pronunciation (using murfAI, converts text-to-speech)
 User records their voice
-AI model analyzes:
+AI model analyzes (converts speech-to-text):
 Pronunciation accuracy
 Phonetic similarity
 Feedback is displayed to the user
 
-🛠️ Tech Stack
+💯Scoring process (backend comparision):
+
+-> If user record a empty clip, AI checks and will display the error message.
+-> If user's voice is not clear or more background noice was detected, Error message will be displayed.
+-> If user speaks completely wrong phase again error message will be displayed after verifying.
+-> If user records the perfect audio clip with clear voice and correct or similar phrase, AI will verify the rhythm and accuracy of the clip and display the message with number score out of 100.
+
+🛠️ Tech Stack:
+
 Frontend:
 HTML / CSS / JavaScript
 
@@ -35,28 +44,31 @@ Text-to-Speech (TTS)
 Audio similarity / embeddings
 
 Deployment:
-Render (https://render.com)
+Render
 
-🎯 Use Cases
+🎯 Use Cases:
+
 Students improving spoken English
 Language learners
 Interview preparation
 Accent training
 Communication skill development
 
-🔮 Future Improvements
-📱 Mobile app version
+🔮 Future Improvements:
+
 🌍 Multi-language support
 🧠 Advanced phoneme-level feedback
 📈 Progress tracking dashboard
 🎮 Gamification (scores, streaks)
 
-👨‍💻 Author
+👨‍💻 Author:
 
 Manicka Vinayagam
 🔗 GitHub: https://github.com/Manickam-04
+
 Hrushabh
 🔗 GitHub: https://github.com/hrushabhbait3685-sketch
 
-⭐ Support
+⭐ Support:
+
 If you like this project, please give it a ⭐ on GitHub!

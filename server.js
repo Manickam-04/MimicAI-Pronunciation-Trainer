@@ -58,23 +58,8 @@ app.post('/api/score', upload.single('audio'), async (req, res) => {
     }
 
     console.log(`Calling Groq Whisper API (v3)...`);
-    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        ...form.getHeaders(),
-      },
-      body: form,
-    });
-
-    if (!groqRes.ok) {
-      const err = await groqRes.json().catch(() => ({}));
-      console.error('Groq API Error Detail:', JSON.stringify(err, null, 2));
-      throw new Error(err.error?.message || `Groq API returned ${groqRes.status}`);
-    }
-
-    const groqData = await groqRes.json();
-    const transcript = (groqData.text || '').trim();
+    const transcript = await transcribeAudio(audioBuffer, language);
+    console.log(`AI Transcribed (${language}): "${transcript}"`);
     console.log(`AI Transcribed (${language}): "${transcript}"`);
 
     // Clean transcript for comparison
@@ -134,6 +119,61 @@ app.post('/api/score', upload.single('audio'), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+/* ─────────────────────────────────────────────────────────────
+   POST /api/transcribe
+   Receives audio file and returns text (auto-detect language)
+   Used for the "Type your own" voice input
+───────────────────────────────────────────────────────────── */
+app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
+  const audioBuffer = req.file?.buffer;
+  console.log(`Transcribe request received. Audio size: ${audioBuffer?.length || 0} bytes. Mimetype: ${req.file?.mimetype}`);
+
+  if (!audioBuffer) {
+    return res.status(400).json({ error: 'Audio is required' });
+  }
+
+  try {
+    const transcript = await transcribeAudio(audioBuffer); // No lang = auto-detect
+    res.json({ transcript });
+  } catch (err) {
+    console.error('Transcription error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Helper to call Groq Whisper API
+ */
+async function transcribeAudio(audioBuffer, language = null) {
+  if (!GROQ_API_KEY) throw new Error('Groq API key not configured');
+
+  const form = new FormData();
+  form.append('file', audioBuffer, { filename: 'speech.webm', contentType: 'audio/webm' });
+  form.append('model', 'whisper-large-v3');
+
+  if (language) {
+    const isoCode = language.split('-')[0].toLowerCase();
+    form.append('language', isoCode);
+  }
+
+  const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      ...form.getHeaders(),
+    },
+    body: form,
+  });
+
+  if (!groqRes.ok) {
+    const err = await groqRes.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Groq API returned ${groqRes.status}`);
+  }
+
+  const groqData = await groqRes.json();
+  return (groqData.text || '').trim();
+}
 
 /* ─────────────────────────────────────────────────────────────
    POST /api/tts

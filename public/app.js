@@ -39,13 +39,88 @@ if (SpeechRec) {
   };
 }
 
+let isInputVoiceActive = false;
+let inputMediaRecorder = null;
+let inputChunks = [];
+
+function toggleInputVoice() {
+  if (isInputVoiceActive) {
+    stopInputVoice();
+    return;
+  }
+  startInputVoice();
+}
+
+async function startInputVoice() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    inputChunks = [];
+    inputMediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() });
+    
+    inputMediaRecorder.ondataavailable = e => { 
+      if (e.data.size > 0) inputChunks.push(e.data); 
+    };
+    
+    inputMediaRecorder.onstop = onInputRecordStop;
+    
+    inputMediaRecorder.start();
+    isInputVoiceActive = true;
+    btnInputMic?.classList.add('active');
+  } catch (err) {
+    console.error('Mic access denied:', err);
+    toast('Microphone access denied');
+  }
+}
+
+function stopInputVoice() {
+  if (inputMediaRecorder && isInputVoiceActive) {
+    inputMediaRecorder.stop();
+    inputMediaRecorder.stream.getTracks().forEach(t => t.stop());
+    isInputVoiceActive = false;
+    btnInputMic?.classList.remove('active');
+  }
+}
+
+async function onInputRecordStop() {
+  const blob = new Blob(inputChunks, { type: getSupportedMimeType() });
+  
+  // Show loading state on the button
+  const originalHtml = btnInputMic.innerHTML;
+  btnInputMic.innerHTML = `<span class="loading-spinner-small" style="margin-right:0"></span>`;
+  btnInputMic.disabled = true;
+
+  const formData = new FormData();
+  formData.append('audio', blob, 'recording.webm');
+
+  try {
+    const res = await fetch('/api/transcribe', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) throw new Error('Transcription failed');
+
+    const data = await res.json();
+    if (data.transcript) {
+      customPhrase.value = data.transcript;
+      customPhrase.dispatchEvent(new Event('input'));
+    }
+  } catch (err) {
+    console.error('Transcription error:', err);
+    toast('AI Transcription failed: ' + (err.message || 'Unknown error'));
+  } finally {
+    btnInputMic.innerHTML = originalHtml;
+    btnInputMic.disabled = false;
+  }
+}
+
 // ─── Score messages ──────────────────────────────────────────
 const GRADE_MAP = [
-  { min: 90, grade: 'Excellent',  color: '#00e5c4', msg: 'Near-native! Keep it up.' },
-  { min: 75, grade: 'Great',      color: '#00d4b0', msg: "Strong effort — a little more and you'll nail it." },
-  { min: 60, grade: 'Good',       color: '#f0a500', msg: 'Good job! Focus on rhythm and try once more.' },
-  { min: 40, grade: 'Fair',       color: '#ff8a65', msg: 'Getting there — listen closely and record again.' },
-  { min: 0,  grade: 'Keep going', color: '#ff5c5c', msg: 'Practice makes perfect — slow down each syllable.' },
+  { min: 90, grade: 'Excellent',  color: '#00E5FF', msg: 'Near-native! Keep it up.' },
+  { min: 75, grade: 'Great',      color: '#4DD0E1', msg: "Strong effort — a little more and you'll nail it." },
+  { min: 60, grade: 'Good',       color: '#B388FF', msg: 'Good job! Focus on rhythm and try once more.' },
+  { min: 40, grade: 'Fair',       color: '#FF8A80', msg: 'Getting there — listen closely and record again.' },
+  { min: 0,  grade: 'Keep going', color: '#FF4D85', msg: 'Practice makes perfect — slow down each syllable.' },
 ];
 
 // ─── DOM refs ────────────────────────────────────────────────
@@ -83,6 +158,7 @@ const btnBack       = $('btn-back');
 const btnTryAgain   = $('btn-try-again');
 const btnNext       = $('btn-next-phrase');
 const toastEl       = $('toast');
+const btnInputMic   = $('btn-input-mic');
 
 // ─── Boot ────────────────────────────────────────────────────
 async function init() {
@@ -129,6 +205,10 @@ async function init() {
   btnBack.addEventListener('click', goBack);
   btnTryAgain.addEventListener('click', resetRecording);
   btnNext.addEventListener('click', nextPhrase);
+
+  if (btnInputMic) {
+    btnInputMic.addEventListener('click', toggleInputVoice);
+  }
 }
 
 // ─── Voices & phrases ────────────────────────────────────────
@@ -543,8 +623,8 @@ function drawWaveform(canvas, buffer, type) {
   const barW = 3, gap = 1.5, total = barW + gap;
   const bars  = Math.floor(W / total);
   const chunk = Math.floor(data.length / bars);
-  const color = type === 'native' ? '#00e5c4' : '#ff8a65';
-  const dim   = type === 'native' ? 'rgba(0,229,196,0.15)' : 'rgba(255,138,101,0.15)';
+  const color = type === 'native' ? '#FF4D85' : '#00E5FF';
+  const dim   = type === 'native' ? 'rgba(255, 77, 133, 0.15)' : 'rgba(0, 229, 255, 0.15)';
 
   ctx.clearRect(0, 0, W, H);
   for (let i = 0; i < bars; i++) {

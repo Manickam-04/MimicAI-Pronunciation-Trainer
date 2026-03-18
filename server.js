@@ -251,13 +251,9 @@ app.post('/api/translate', async (req, res) => {
       });
     }
 
-    // Google Translate data[2] has the detected source language
-    const detectedLang = data[2];
-
-    // If they typed in English (en), we use the translated output.
-    // If they typed in target language already or Google auto-detected target language, we could just return text.
-    // Google mostly passes it through if it's already the target lang.
-    return res.json({ translatedText: translatedText || text });
+    const result = (translatedText || text).trim();
+    console.log(`Translation Result [${tl}]: "${text}" -> "${result}"`);
+    return res.json({ translatedText: result });
   } catch (err) {
     console.error('Translate error:', err);
     return res.status(500).json({ error: 'Translation failed' });

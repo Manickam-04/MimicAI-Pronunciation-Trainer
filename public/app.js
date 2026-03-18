@@ -246,27 +246,41 @@ async function onContinue() {
   const phrase = rawPhrase || selectedPhrase;
   if (!phrase) { toast('Please select or type a phrase first'); return; }
 
-  if (rawPhrase) {
-    btnContinue.disabled = true;
-    btnContinue.textContent = 'Translating…';
-    try {
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: rawPhrase, targetLang: currentLang }),
-      });
-      if (res.ok) {
-        const data = await res.json();
+  btnContinue.disabled = true;
+  btnContinue.textContent = 'Preparing…';
+
+  try {
+    if (rawPhrase) {
+      // Parallel translation for better speed and consistency
+      const [targetRes, enRes] = await Promise.all([
+        fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: rawPhrase, targetLang: currentLang }),
+        }),
+        fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: rawPhrase, targetLang: 'en' }),
+        })
+      ]);
+
+      if (targetRes.ok) {
+        const data = await targetRes.json();
         selectedPhrase = data.translatedText || rawPhrase;
       } else {
         selectedPhrase = rawPhrase;
       }
-    } catch {
-      selectedPhrase = rawPhrase;
-    }
-    
-    // Fetch English translation for custom phrase
-    try {
+
+      if (enRes.ok) {
+        const data = await enRes.json();
+        selectedTranslation = data.translatedText;
+      } else {
+        selectedTranslation = '';
+      }
+    } else {
+      // For predefined phrases, we only need English translation
+      selectedPhrase = phrase;
       const enRes = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,32 +289,14 @@ async function onContinue() {
       if (enRes.ok) {
         const data = await enRes.json();
         selectedTranslation = data.translatedText;
+      } else {
+        selectedTranslation = '';
       }
-    } catch {
-      selectedTranslation = '';
     }
-    
-    btnContinue.disabled = false;
-    btnContinue.textContent = 'Continue →';
-  } else {
-    selectedPhrase = phrase;
-    
-    btnContinue.disabled = true;
-    btnContinue.textContent = 'Translating…';
-    // Fetch English translation for predefined phrase
-    try {
-      const enRes = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: selectedPhrase, targetLang: 'en' }),
-      });
-      if (enRes.ok) {
-        const data = await enRes.json();
-        selectedTranslation = data.translatedText;
-      }
-    } catch {
-      selectedTranslation = '';
-    }
+  } catch (err) {
+    console.error('Translation error:', err);
+    if (rawPhrase) selectedPhrase = rawPhrase;
+  } finally {
     btnContinue.disabled = false;
     btnContinue.textContent = 'Continue →';
   }

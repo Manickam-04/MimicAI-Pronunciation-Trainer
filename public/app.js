@@ -502,9 +502,14 @@ async function getAIScore(audioBlob) {
     const result = await res.json();
     
     // If the AI found nothing or volume is virtually zero
-    if (!result.transcript || result.transcript.trim().replace(/[.]/g, '') === '' || (result.accuracy === 0 && result.volume < 10)) {
-        showScorePanelZero(result.volume < 5 ? 'No Voice Found' : 'Voice Not Clear', '#ff5c5c', 'Please speak clearly and try again.', result.rhythm, 0, result.volume);
-        recordHint.textContent = result.volume < 5 ? 'No voice detected' : 'Voice was not clear';
+    if (!result.transcript || result.transcript.trim().replace(/[.]/g, '') === '') {
+        const isMuted = result.volume < 5;
+        const msg = isMuted ? 'Voice not detected' : 'Voice is not clear';
+        showScorePanelZero(msg, '#ff5c5c', 'Please speak clearly and try again.', result.rhythm, 0, result.volume);
+        recordHint.textContent = msg;
+    } else if (result.accuracy === 0) {
+        showScorePanelZero("recorded phrase doesn't match", '#ff5c5c', 'Please try saying the correct phrase.', result.rhythm, 0, result.volume);
+        recordHint.textContent = "recorded phrase doesn't match";
     } else {
         recordHint.textContent = 'Listen to both tracks, then check your score';
         showScore(result.overall, result.rhythm, result.accuracy, result.volume);

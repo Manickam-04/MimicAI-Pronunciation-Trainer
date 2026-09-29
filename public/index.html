@@ -2,198 +2,581 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MimicAI — Pronunciation Trainer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>MimicAI — AI Pronunciation Studio</title>
+  <meta name="description" content="Master your speech and accent in any language with AI-powered pronunciation scoring and native speaker comparisons."/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
+  <!-- Google Identity Services for Google OAuth -->
+  <script src="https://accounts.google.com/gsi/client" async defer onload="window.onGoogleLibraryLoad && window.onGoogleLibraryLoad()"></script>
 </head>
 <body>
 
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
   <div class="noise"></div>
 
-  <header>
-    <div class="logo">
-      <span class="logo-mark"></span>
-      <span class="logo-text">MimicAI</span>
+  <!-- Header Navigation -->
+  <header class="app-header">
+    <div class="header-container">
+      
+      <!-- Brand Logo -->
+      <div class="logo" id="logo-home" title="MimicAI Pronunciation Studio">
+        <div class="logo-icon-wrap">
+          <span class="logo-mark"></span>
+          <span class="logo-pulse"></span>
+        </div>
+        <div class="logo-text-group">
+          <span class="logo-text">Mimic<span class="logo-highlight">AI</span></span>
+          <span class="logo-sub">Studio</span>
+        </div>
+      </div>
+
+      <!-- App View Switcher Tabs -->
+      <nav class="nav-switcher">
+        <button class="nav-tab active" id="tab-trainer" data-view="trainer">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <span>Trainer</span>
+        </button>
+        <button class="nav-tab" id="tab-dashboard" data-view="dashboard">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9"></rect>
+            <rect x="14" y="3" width="7" height="5"></rect>
+            <rect x="14" y="12" width="7" height="9"></rect>
+            <rect x="3" y="16" width="7" height="5"></rect>
+          </svg>
+          <span>Dashboard</span>
+        </button>
+      </nav>
+
+      <!-- User Auth / Profile Actions -->
+      <div class="header-actions">
+        <!-- DB Status indicator (subtle) -->
+        <div class="db-badge" id="db-badge" title="Database status">
+          <span class="status-dot"></span>
+          <span class="db-status-text" id="db-status-text">Cloud DB</span>
+        </div>
+
+        <!-- Guest view -->
+        <div id="auth-guest-section">
+          <button class="btn-auth-trigger" id="btn-open-login">
+            <span>Sign In</span>
+          </button>
+        </div>
+
+        <!-- Logged-in user view -->
+        <div id="auth-user-section" class="hidden">
+          <div class="user-pill" id="user-pill">
+            <div class="user-avatar" id="user-avatar">U</div>
+            <span class="user-name" id="user-name">User</span>
+            <svg class="chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <!-- Dropdown menu -->
+          <div class="user-dropdown hidden" id="user-dropdown">
+            <div class="dropdown-header">
+              <p class="dropdown-name" id="dropdown-user-name">User</p>
+              <p class="dropdown-email" id="dropdown-user-email">user@example.com</p>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" id="btn-nav-to-dash">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <span>My Dashboard</span>
+            </button>
+            <button class="dropdown-item logout" id="btn-logout">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
     </div>
-    <div class="tagline">Powered by Murf Falcon TTS</div>
   </header>
 
-  <main>
+  <main class="main-container">
 
-    <!-- Step 1: Config Panel -->
-    <section class="panel config-panel" id="step-config">
-      <div class="step-label">01 — Setup</div>
-      <h2>Choose your language &amp; phrase that you want to practice</h2>
+    <!-- ═══════════════════════════════════════════════════════════
+         VIEW 1: TRAINER VIEW
+    ═══════════════════════════════════════════════════════════ -->
+    <div id="view-trainer" class="app-view active">
+      
+      <!-- Step 1: Config Panel -->
+      <section class="panel glass-panel config-panel" id="step-config">
+        <div class="panel-header-badge">
+          <span class="step-num">01</span>
+          <span class="step-title">Configuration</span>
+        </div>
+        <h2 class="panel-heading">Fine-tune your target language &amp; speech style</h2>
 
-      <div class="field-row">
+        <div class="field-row">
+          <div class="field">
+            <label for="lang-select">Language</label>
+            <div class="select-wrap">
+              <select id="lang-select">
+                <option value="ta-IN">Tamil (தமிழ்)</option>
+                <option value="mr-IN">Marathi (मराठी)</option>
+                <option value="hi-IN">Hindi (हिन्दी)</option>
+                <option value="en-IN">English (India)</option>
+                <option value="ja-JP">Japanese (日本語)</option>
+                <option value="pt-BR">Portuguese (Brasil)</option>
+                <option value="de-DE">German (Deutsch)</option>
+                <option value="fr-FR">French (Français)</option>
+                <option value="es-ES">Spanish (España)</option>
+                <option value="es-MX">Spanish (México)</option>
+                <option value="it-IT">Italian (Italiano)</option>
+              </select>
+              <span class="select-arrow">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="voice-select">Native Voice Model</label>
+            <div class="select-wrap">
+              <select id="voice-select">
+                <option value="">Loading voices…</option>
+              </select>
+              <span class="select-arrow">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div class="field">
-          <label for="lang-select">Language</label>
-          <div class="select-wrap">
-            <select id="lang-select">
+          <label for="custom-phrase">Type or Speak Your Own Phrase</label>
+          <div class="input-with-action">
+            <input type="text" id="custom-phrase" placeholder="Type a phrase in any language or record with mic…" maxlength="200" autocomplete="off"/>
+            <button id="btn-input-mic" class="btn-input-action" title="Click to speak and auto-transcribe">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-with-hint">
+            <label>Sample Curated Phrases</label>
+            <span class="sub-hint">Click any phrase below</span>
+          </div>
+          <div class="phrase-grid" id="phrase-grid">
+            <div class="loading-chips">Loading phrases…</div>
+          </div>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn-primary" id="btn-continue">
+            <span>Start Practice</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Step 2: Practice Panel -->
+      <section class="panel glass-panel practice-panel hidden" id="step-practice">
+        <!-- Top Navigation Bar: Change Phrase (Back) -->
+        <div class="practice-top-bar">
+          <button class="btn-back-phrase" id="btn-back" title="Change phrase or language">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <span>Change Phrase</span>
+          </button>
+        </div>
+
+        <div class="panel-header-row">
+          <div class="panel-header-badge">
+            <span class="step-num">02</span>
+            <span class="step-title">Speech Analysis</span>
+          </div>
+          <div class="current-lang-tag" id="current-lang-tag">Spanish</div>
+        </div>
+
+        <div class="phrase-container" id="phrase-container">
+          <div class="phrase-display" id="phrase-display"></div>
+          <div class="phrase-translation" id="phrase-translation"></div>
+        </div>
+
+        <!-- Audio Comparison Waveforms -->
+        <div class="audio-section">
+          
+          <!-- Native Speaker Track -->
+          <div class="track-block track-native">
+            <div class="track-header">
+              <div class="track-info">
+                <span class="track-dot dot-native"></span>
+                <span class="track-title">Native Reference</span>
+              </div>
+              <span class="track-badge native">Murf Falcon AI</span>
+            </div>
+            <div class="waveform-wrapper">
+              <canvas id="canvas-native" class="waveform"></canvas>
+              <div class="waveform-placeholder" id="placeholder-native">Press play to listen &amp; render</div>
+            </div>
+            <div class="track-controls">
+              <button class="btn-icon" id="btn-play-native" title="Listen to native speaker">
+                <svg viewBox="0 0 24 24" width="18" height="18"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
+              </button>
+              <div class="duration-label" id="native-duration">0:00</div>
+              <div class="speed-wrap">
+                <span class="speed-label">Speed:</span>
+                <select id="native-speed" class="speed-select">
+                  <option value="1.0">1.0x</option>
+                  <option value="0.75">0.75x</option>
+                  <option value="0.5">0.5x</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="track-divider">
+            <span class="vs-badge">VS</span>
+          </div>
+
+          <!-- User Attempt Track -->
+          <div class="track-block track-user">
+            <div class="track-header">
+              <div class="track-info">
+                <span class="track-dot dot-user"></span>
+                <span class="track-title">Your Voice Attempt</span>
+              </div>
+              <span class="track-badge user">Microphone</span>
+            </div>
+            <div class="waveform-wrapper">
+              <canvas id="canvas-user" class="waveform"></canvas>
+              <div class="waveform-placeholder" id="placeholder-user">Record to generate waveform</div>
+            </div>
+            <div class="track-controls">
+              <button class="btn-icon" id="btn-play-user" title="Play your recording" disabled>
+                <svg viewBox="0 0 24 24" width="18" height="18"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
+              </button>
+              <div class="duration-label" id="user-duration">—</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Recording Interactive Zone -->
+        <div class="record-zone">
+          <button class="btn-record" id="btn-record" aria-label="Tap to record voice">
+            <span class="rec-outer-ring"></span>
+            <span class="rec-icon"></span>
+            <span class="rec-label">Tap to Record</span>
+          </button>
+          <p class="record-hint" id="record-hint">Tap the microphone button to start recording</p>
+        </div>
+
+        <!-- Score Results Panel -->
+        <div class="score-panel hidden" id="score-panel">
+          <div class="score-top-row">
+            <div class="score-ring-wrap">
+              <svg class="score-ring" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="50"/>
+                <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="50"/>
+              </svg>
+              <div class="score-number-box">
+                <span class="score-number" id="score-number">0</span>
+                <span class="score-unit">%</span>
+              </div>
+            </div>
+            <div class="score-meta">
+              <div class="score-grade" id="score-grade">—</div>
+              <div class="score-message" id="score-message"></div>
+              <div class="save-status-badge hidden" id="save-status-badge">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Saved to your Cloud Dashboard</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="score-breakdown">
+            <div class="breakdown-item">
+              <div class="breakdown-header">
+                <span class="breakdown-label">Accuracy (Whisper AI)</span>
+                <span class="breakdown-val" id="val-accuracy">—</span>
+              </div>
+              <div class="breakdown-bar"><div class="breakdown-fill fill-accuracy" id="bar-accuracy"></div></div>
+            </div>
+            <div class="breakdown-item">
+              <div class="breakdown-header">
+                <span class="breakdown-label">Rhythm &amp; Cadence</span>
+                <span class="breakdown-val" id="val-rhythm">—</span>
+              </div>
+              <div class="breakdown-bar"><div class="breakdown-fill fill-rhythm" id="bar-rhythm"></div></div>
+            </div>
+            <div class="breakdown-item">
+              <div class="breakdown-header">
+                <span class="breakdown-label">Volume &amp; Pitch Clarity</span>
+                <span class="breakdown-val" id="val-volume">—</span>
+              </div>
+              <div class="breakdown-bar"><div class="breakdown-fill fill-volume" id="bar-volume"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Practice Bottom Action Bar -->
+        <div class="practice-actions">
+          <button class="btn-secondary hidden" id="btn-try-again">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <span>Try Again</span>
+          </button>
+          <button class="btn-primary hidden" id="btn-next-phrase">
+            <span>Next Phrase</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         VIEW 2: USER DASHBOARD VIEW
+    ═══════════════════════════════════════════════════════════ -->
+    <div id="view-dashboard" class="app-view hidden">
+      
+      <!-- Guest Locked Alert (if not logged in) -->
+      <div class="dashboard-guest-card glass-panel" id="dash-guest-card">
+        <div class="guest-card-content">
+          <div class="guest-icon-badge">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
+          <div class="guest-text">
+            <h3>Your Personal Pronunciation History</h3>
+            <p>Sign in with Google or Email to unlock cloud storage for all your spoken phrases, audio recordings, and accuracy metrics stored securely in Neon PostgreSQL.</p>
+          </div>
+          <button class="btn-primary" id="btn-guest-unlock">
+            <span>Sign In to Unlock</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Logged-in Dashboard Content -->
+      <div id="dash-auth-content" class="hidden">
+        
+        <!-- Welcome banner with Editable Name -->
+        <div class="dashboard-header-group">
+          <div class="dash-greeting-wrap">
+            <div class="greeting-row">
+              <h2 class="dash-greeting" id="dash-greeting">Welcome back!</h2>
+              <button class="btn-edit-name" id="btn-edit-name" title="Edit your display name" aria-label="Edit display name">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+            </div>
+            <!-- Inline name edit form -->
+            <form class="name-edit-form hidden" id="name-edit-form" onsubmit="return false;">
+              <input type="text" id="input-edit-name" maxlength="40" placeholder="Enter your display name" required autocomplete="off"/>
+              <button type="submit" class="btn-name-save" id="btn-save-name" title="Save name">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+              <button type="button" class="btn-name-cancel" id="btn-cancel-name" title="Cancel">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </form>
+            <p class="dash-subtitle" id="dash-subtitle">Track your pronunciation trajectory and replay your audio attempts.</p>
+          </div>
+          <button class="btn-secondary btn-sm" id="btn-refresh-history">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <!-- 4 Metric Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card glass-panel">
+            <div class="metric-icon icon-cyan">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+            </div>
+            <div class="metric-details">
+              <span class="metric-num" id="stat-total">0</span>
+              <span class="metric-label">Practices Recorded</span>
+            </div>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-icon icon-pink">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            </div>
+            <div class="metric-details">
+              <span class="metric-num"><span id="stat-avg">0</span>%</span>
+              <span class="metric-label">Average Score</span>
+            </div>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-icon icon-purple">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path></svg>
+            </div>
+            <div class="metric-details">
+              <span class="metric-num"><span id="stat-best">0</span>%</span>
+              <span class="metric-label">Highest Score</span>
+            </div>
+          </div>
+
+          <div class="metric-card glass-panel">
+            <div class="metric-icon icon-blue">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            </div>
+            <div class="metric-details">
+              <span class="metric-num" id="stat-languages">0</span>
+              <span class="metric-label">Languages Studied</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- History Filter Controls -->
+        <div class="history-controls-row">
+          <div class="search-input-wrap">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="history-search" placeholder="Search phrases or translations…" />
+          </div>
+          <div class="filter-select-wrap">
+            <select id="history-lang-filter">
+              <option value="all">All Languages</option>
               <option value="ta-IN">Tamil</option>
               <option value="mr-IN">Marathi</option>
               <option value="hi-IN">Hindi</option>
               <option value="en-IN">English (India)</option>
               <option value="ja-JP">Japanese</option>
-              <option value="pt-BR">Portuguese (Brazil)</option>
+              <option value="pt-BR">Portuguese</option>
               <option value="de-DE">German</option>
               <option value="fr-FR">French</option>
               <option value="es-ES">Spanish (Spain)</option>
               <option value="es-MX">Spanish (Mexico)</option>
               <option value="it-IT">Italian</option>
             </select>
-            <span class="select-arrow">↓</span>
           </div>
         </div>
 
-        <div class="field">
-          <label for="voice-select">Voice style</label>
-          <div class="select-wrap">
-            <select id="voice-select">
-              <option value="">Loading…</option>
-            </select>
-            <span class="select-arrow">↓</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="field">
-        <label for="custom-phrase">Type your own</label>
-        <div class="input-with-action">
-          <input type="text" id="custom-phrase" placeholder="Type a phrase in any language…" maxlength="200"/>
-          <button id="btn-input-mic" class="btn-input-action" title="Voice input">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Sample Phrase</label>
-        <div class="phrase-grid" id="phrase-grid">
-          <div class="loading-chips">Loading phrases…</div>
-        </div>
-      </div>
-
-      <div class="config-actions">
-        <button class="btn-primary" id="btn-continue">Continue →</button>
-      </div>
-    </section>
-
-    <!-- Step 2: Practice Panel -->
-    <section class="panel practice-panel hidden" id="step-practice">
-      <div class="step-label">02 — Practice</div>
-
-      <div class="phrase-container" id="phrase-container">
-        <div class="phrase-display" id="phrase-display"></div>
-        <div class="phrase-translation" id="phrase-translation"></div>
-      </div>
-
-      <div class="audio-section">
-        <div class="track-block">
-          <div class="track-header">
-            <span class="track-title">Native speaker</span>
-            <span class="track-badge native">Murf AI</span>
-          </div>
-          <div class="waveform-wrapper">
-            <canvas id="canvas-native" class="waveform"></canvas>
-            <div class="waveform-placeholder" id="placeholder-native">Press play to load</div>
-          </div>
-          <div class="track-controls">
-            <button class="btn-icon" id="btn-play-native" title="Play native audio">
-              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
-            </button>
-            <div class="duration-label" id="native-duration">—</div>
-            <div class="select-wrap" style="margin-left: auto;">
-              <select id="native-speed" class="speed-select" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: inherit; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                <option value="1.0">1.0x</option>
-                <option value="0.75">0.75x</option>
-                <option value="0.5">0.5x</option>
-              </select>
-            </div>
+        <!-- History Cards List Container -->
+        <div class="history-list" id="history-list">
+          <div class="history-loading">
+            <span class="loading-spinner"></span>
+            <span>Loading your practice sessions…</span>
           </div>
         </div>
 
-        <div class="track-divider"><span>vs</span></div>
-
-        <div class="track-block">
-          <div class="track-header">
-            <span class="track-title">Your attempt</span>
-            <span class="track-badge user">You</span>
-          </div>
-          <div class="waveform-wrapper">
-            <canvas id="canvas-user" class="waveform"></canvas>
-            <div class="waveform-placeholder" id="placeholder-user">Record to see your waveform</div>
-          </div>
-          <div class="track-controls">
-            <button class="btn-icon" id="btn-play-user" title="Play your recording" disabled>
-              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
-            </button>
-            <div class="duration-label" id="user-duration">—</div>
-          </div>
-        </div>
       </div>
 
-      <div class="record-zone">
-        <button class="btn-record" id="btn-record">
-          <span class="rec-icon"></span>
-          <span class="rec-label">Tap to record</span>
-        </button>
-        <p class="record-hint" id="record-hint">Tap the button to start recording</p>
-      </div>
-
-      <!-- Score Panel -->
-      <div class="score-panel hidden" id="score-panel">
-        <div class="score-ring-wrap">
-          <svg class="score-ring" viewBox="0 0 120 120">
-            <circle class="ring-bg"   cx="60" cy="60" r="50"/>
-            <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="50"/>
-          </svg>
-          <div class="score-number" id="score-number">0</div>
-        </div>
-        <div class="score-meta">
-          <div class="score-grade"   id="score-grade">—</div>
-          <div class="score-message" id="score-message"></div>
-        </div>
-        <div class="score-breakdown">
-          <div class="breakdown-item">
-            <span class="breakdown-label">Rhythm</span>
-            <div class="breakdown-bar"><div class="breakdown-fill" id="bar-rhythm"></div></div>
-            <span class="breakdown-val" id="val-rhythm">—</span>
-          </div>
-          <div class="breakdown-item">
-            <span class="breakdown-label">Accuracy</span>
-            <div class="breakdown-bar"><div class="breakdown-fill" id="bar-accuracy"></div></div>
-            <span class="breakdown-val" id="val-accuracy">—</span>
-          </div>
-          <div class="breakdown-item">
-            <span class="breakdown-label">Volume</span>
-            <div class="breakdown-bar"><div class="breakdown-fill" id="bar-volume"></div></div>
-            <span class="breakdown-val" id="val-volume">—</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="practice-actions">
-        <button class="btn-secondary" id="btn-back">← Change phrase</button>
-        <button class="btn-secondary hidden" id="btn-try-again">Try again</button>
-        <button class="btn-primary   hidden" id="btn-next-phrase">Next phrase →</button>
-      </div>
-    </section>
+    </div>
 
   </main>
 
-  <footer>
+  <!-- ═══════════════════════════════════════════════════════════
+       AUTHENTICATION MODAL
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop hidden" id="auth-modal">
+    <div class="modal-card glass-panel">
+      
+      <!-- OAuth Loading Overlay -->
+      <div class="oauth-loading-overlay hidden" id="oauth-loading-overlay">
+        <div class="oauth-spinner"></div>
+        <h4 class="oauth-loading-title">Connecting to Google…</h4>
+        <p class="oauth-loading-sub">Authenticating and syncing with Neon Cloud</p>
+      </div>
+
+      <button class="modal-close" id="btn-close-auth" aria-label="Close modal">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+
+      <div class="modal-header">
+        <div class="modal-logo-icon">
+          <span class="logo-mark"></span>
+        </div>
+        <h3 class="modal-title" id="auth-modal-title">Sign in to MimicAI</h3>
+        <p class="modal-subtitle">Save your pronunciation history &amp; voice recordings to Neon Cloud</p>
+      </div>
+
+      <!-- Auth Switcher (Tabs) -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" data-mode="login">Sign In</button>
+        <button class="auth-tab" id="tab-register" data-mode="register">Create Account</button>
+      </div>
+
+      <!-- Google OAuth Button (Single Button) -->
+      <div class="google-auth-zone">
+        <div id="google-btn-wrapper" class="google-btn-wrapper"></div>
+        <!-- Fallback styled Google button (only shown if iframe fails) -->
+        <button type="button" class="btn-google hidden" id="btn-custom-google">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+      </div>
+
+      <div class="auth-divider">
+        <span>or with email</span>
+      </div>
+
+      <!-- Email / Password Form -->
+      <form class="auth-form" id="auth-form" onsubmit="return false;">
+        
+        <div class="field hidden" id="group-name">
+          <label for="auth-name">Full Name</label>
+          <input type="text" id="auth-name" placeholder="John Doe" autocomplete="name"/>
+        </div>
+
+        <div class="field">
+          <label for="auth-email">Email Address</label>
+          <input type="email" id="auth-email" placeholder="name@example.com" required autocomplete="email"/>
+        </div>
+
+        <div class="field">
+          <label for="auth-password">Password</label>
+          <div class="input-password-wrap">
+            <input type="password" id="auth-password" placeholder="At least 6 characters" required autocomplete="current-password"/>
+          </div>
+        </div>
+
+        <!-- Error alert message inside modal -->
+        <div class="modal-error-alert hidden" id="modal-error-alert"></div>
+
+        <button type="submit" class="btn-primary btn-full" id="btn-auth-submit">
+          <span id="btn-auth-text">Sign In</span>
+          <span class="loading-spinner-small hidden" id="auth-spinner"></span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
     <div class="footer-content">
       <span class="app-name">MimicAI</span>
       <span class="separator">|</span>
-      <span class="dev-names">Developed by Manicka Vinayagam &amp; Hrushabh with help of AI</span>
+      <span class="dev-names">Developed by Team Neural Nomads</span>
+      <span class="separator">|</span>
+      <span class="tech-stack-tag">Murf TTS • Groq Whisper • Neon Postgres</span>
     </div>
   </footer>
 
+  <!-- Toast Notification Container -->
   <div class="toast hidden" id="toast"></div>
+
+  <!-- Audio element for playback in dashboard -->
+  <audio id="global-audio-player" class="hidden"></audio>
 
   <script src="app.js"></script>
 </body>

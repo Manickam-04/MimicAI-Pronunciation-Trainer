@@ -8,6 +8,7 @@
 
 ## 🚀 Key Features
 
+<<<<<<< HEAD
 * **🎨 Modern Studio Theme**: Midnight glassmorphism aesthetic with subtle ambient glows, responsive mobile navigation, dynamic SVG radial score meters, and interactive waveform visualizers.
 * **🔐 Full Authentication**:
   * **Email & Password**: Registration and login with `bcryptjs` password hashing and secure JWT session tokens.
@@ -25,6 +26,29 @@
   * Automatic table creation upon server boot.
 
 ---
+=======
+🧠 How It Works:
+
+User enters a word/sentence
+System generates or provides a reference pronunciation (using murfAI, converts text-to-speech)
+User records their voice
+AI model analyzes (converts speech-to-text):
+Pronunciation accuracy
+Phonetic similarity
+Feedback is displayed to the user
+
+💯Scoring process (backend comparision):
+
+-> If user record a empty clip, AI checks and will display the error message.
+-> If user's voice is not clear or more background noice was detected, Error message will be displayed.
+-> If user speaks completely wrong phase again error message will be displayed after verifying.
+-> If user records the perfect audio clip with clear voice and correct or similar phrase, AI will verify the rhythm and accuracy of the clip and display the message with number score out of 100.
+
+🛠️ Tech Stack:
+
+Frontend:
+HTML / CSS / JavaScript
+>>>>>>> f97201bfedb420c91b80262fccb4ee2050264aa5
 
 ## 🛠️ Tech Stack
 
@@ -37,6 +61,7 @@
   * **Groq Whisper Large v3**: Real-time multi-lingual speech transcription and accuracy matching.
   * **Google Translate API**: Instant bidirectional translation.
 
+<<<<<<< HEAD
 ---
 
 ## ⚙️ Environment Configuration (`.env`)
@@ -94,3 +119,34 @@ GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
    * `JWT_SECRET`
    * `GOOGLE_CLIENT_ID`
 5. Deploy! Neon PostgreSQL automatically stores and streams user audio recordings with zero cloud storage costs and zero data loss across container redeployments.
+=======
+Deployment:
+Render
+
+🎯 Use Cases:
+
+Students improving spoken English
+Language learners
+Interview preparation
+Accent training
+Communication skill development
+
+🔮 Future Improvements:
+
+🌍 Multi-language support
+🧠 Advanced phoneme-level feedback
+📈 Progress tracking dashboard
+🎮 Gamification (scores, streaks)
+
+👨‍💻 Author:
+
+Manicka Vinayagam
+🔗 GitHub: https://github.com/Manickam-04
+
+Hrushabh
+🔗 GitHub: https://github.com/hrushabhbait3685-sketch
+
+⭐ Support:
+
+If you like this project, please give it a ⭐ on GitHub!
+>>>>>>> f97201bfedb420c91b80262fccb4ee2050264aa5

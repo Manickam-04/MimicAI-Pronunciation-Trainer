@@ -1,6 +1,6 @@
 # 🗣️ MimicAI – AI Pronunciation Studio
 
-🔗 **Live Demo:** [https://mimicai.onrender.com](https://mimicai.onrender.com)
+🔗 **Live Demo:** (https://mimicai.onrender.com)
 
 **MimicAI** is an AI-powered pronunciation training web application designed for both desktop and mobile browsers. It helps users master spoken phrases in 11+ languages by comparing their voice with native speaker speech models, scoring speech accuracy via Groq Whisper AI, and saving practice history and audio recordings to **Neon PostgreSQL Cloud**.
 
@@ -138,15 +138,6 @@ Communication skill development
 📈 Progress tracking dashboard
 🎮 Gamification (scores, streaks)
 
-👨‍💻 Author:
-
-Manicka Vinayagam
-🔗 GitHub: https://github.com/Manickam-04
-
-Hrushabh
-🔗 GitHub: https://github.com/hrushabhbait3685-sketch
-
 ⭐ Support:
 
 If you like this project, please give it a ⭐ on GitHub!
->>>>>>> f97201bfedb420c91b80262fccb4ee2050264aa5

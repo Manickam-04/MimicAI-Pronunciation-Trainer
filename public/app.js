@@ -73,6 +73,7 @@ const $ = id => document.getElementById(id);
 async function init() {
   setupNavigation();
   setupAuthModal();
+  setupVoiceModal();
   setupDashboardControls();
 
   // Load server configuration (Google Client ID & DB status)
@@ -132,7 +133,7 @@ async function init() {
   $('btn-next-phrase').addEventListener('click', nextPhrase);
 
   if ($('btn-input-mic')) {
-    $('btn-input-mic').addEventListener('click', toggleInputVoice);
+    $('btn-input-mic').addEventListener('click', openVoiceInputModal);
   }
 }
 
@@ -1452,53 +1453,209 @@ function animateNumber(el, target, duration) {
   requestAnimationFrame(tick);
 }
 
-// ─── Voice Speech-to-Text Input ──────────────────────────────
-function toggleInputVoice() {
-  if (isInputVoiceActive) {
-    stopInputVoice();
-    return;
-  }
-  startInputVoice();
+// ─── Voice Speech-to-Text Input (Mini Pop-up) ──────────────────
+let voiceModalRecorder = null;
+let voiceModalStream = null;
+let voiceModalChunks = [];
+let isVoiceModalRecording = false;
+
+function setupVoiceModal() {
+  const modal = $('voice-input-modal');
+  if (!modal) return;
+
+  $('btn-close-voice-modal')?.addEventListener('click', closeVoiceInputModal);
+  $('btn-voice-modal-cancel')?.addEventListener('click', closeVoiceInputModal);
+
+  modal.addEventListener('click', e => {
+    if (e.target === modal) closeVoiceInputModal();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeVoiceInputModal();
+    }
+  });
+
+  $('voice-popup-lang')?.addEventListener('change', () => {
+    lastVoiceInputLang = $('voice-popup-lang').value;
+    if (!isVoiceModalRecording) {
+      const langText = getVoiceModalLangText();
+      const statusSub = $('voice-status-sub');
+      if (statusSub) statusSub.textContent = `Ready to speak in ${langText}. Tap the mic to start.`;
+    }
+  });
+
+  $('btn-voice-modal-mic')?.addEventListener('click', toggleVoiceModalRecording);
+  $('btn-voice-modal-stop')?.addEventListener('click', stopVoiceModalRecording);
 }
 
-async function startInputVoice() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    inputChunks = [];
-    inputMediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() || undefined });
+let lastVoiceInputLang = 'ta-IN';
 
-    inputMediaRecorder.ondataavailable = e => {
-      if (e.data && e.data.size > 0) inputChunks.push(e.data);
+function getVoiceModalLangText() {
+  const select = $('voice-popup-lang');
+  if (!select || select.selectedIndex < 0) return 'selected language';
+  return select.options[select.selectedIndex].text;
+}
+
+function openVoiceInputModal() {
+  const modal = $('voice-input-modal');
+  if (!modal) return;
+
+  const popupLangSelect = $('voice-popup-lang');
+  if (popupLangSelect) {
+    // If trainer language is one of the Indian languages in our list, we can select it, otherwise retain last selected
+    const hasTrainerMatch = Array.from(popupLangSelect.options).some(o => o.value === currentLang);
+    if (hasTrainerMatch) {
+      popupLangSelect.value = currentLang;
+    } else if (lastVoiceInputLang) {
+      popupLangSelect.value = lastVoiceInputLang;
+    }
+  }
+
+  // Reset modal state
+  isVoiceModalRecording = false;
+  const micBtn = $('btn-voice-modal-mic');
+  if (micBtn) {
+    micBtn.disabled = false;
+    micBtn.classList.remove('recording');
+  }
+  $('voice-icon-mic')?.classList.remove('hidden');
+  $('voice-icon-stop')?.classList.add('hidden');
+  $('voice-mic-container')?.classList.remove('listening');
+  $('voice-wave-bars')?.classList.add('hidden');
+  $('btn-voice-modal-stop')?.classList.add('hidden');
+  if (popupLangSelect) popupLangSelect.disabled = false;
+
+  const statusMain = $('voice-status-main');
+  const statusSub = $('voice-status-sub');
+  if (statusMain) {
+    statusMain.className = 'voice-status-main';
+    statusMain.textContent = 'Select language & tap mic to speak';
+  }
+  if (statusSub) {
+    statusSub.textContent = `Ready to speak in ${getVoiceModalLangText()}. It will transcribe in native script.`;
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeVoiceInputModal() {
+  const modal = $('voice-input-modal');
+  if (!modal) return;
+
+  if (isVoiceModalRecording) {
+    if (voiceModalRecorder && voiceModalRecorder.state !== 'inactive') {
+      try { voiceModalRecorder.stop(); } catch (err) {}
+    }
+    if (voiceModalStream) {
+      voiceModalStream.getTracks().forEach(t => t.stop());
+      voiceModalStream = null;
+    }
+    isVoiceModalRecording = false;
+  }
+
+  modal.classList.add('hidden');
+  $('btn-input-mic')?.classList.remove('active');
+}
+
+function toggleVoiceModalRecording() {
+  if (isVoiceModalRecording) {
+    stopVoiceModalRecording();
+  } else {
+    startVoiceModalRecording();
+  }
+}
+
+async function startVoiceModalRecording() {
+  try {
+    voiceModalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceModalChunks = [];
+    const mime = getSupportedMimeType();
+    voiceModalRecorder = new MediaRecorder(voiceModalStream, mime ? { mimeType: mime } : undefined);
+
+    voiceModalRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) voiceModalChunks.push(e.data);
     };
 
-    inputMediaRecorder.onstop = onInputRecordStop;
-    inputMediaRecorder.start();
-    isInputVoiceActive = true;
-    $('btn-input-mic')?.classList.add('active');
+    voiceModalRecorder.onstop = onVoiceModalRecordStop;
+    voiceModalRecorder.start();
+    isVoiceModalRecording = true;
+
+    // UI Updates: Active Listening
+    $('voice-mic-container')?.classList.add('listening');
+    $('btn-voice-modal-mic')?.classList.add('recording');
+    $('voice-icon-mic')?.classList.add('hidden');
+    $('voice-icon-stop')?.classList.remove('hidden');
+    $('voice-wave-bars')?.classList.remove('hidden');
+    $('btn-voice-modal-stop')?.classList.remove('hidden');
+    if ($('voice-popup-lang')) $('voice-popup-lang').disabled = true;
+
+    const statusMain = $('voice-status-main');
+    const statusSub = $('voice-status-sub');
+    if (statusMain) {
+      statusMain.className = 'voice-status-main speaking';
+      statusMain.textContent = 'Speak now… Listening';
+    }
+    if (statusSub) {
+      statusSub.textContent = `Listening in ${getVoiceModalLangText()}. Tap mic or Stop when finished.`;
+    }
+
   } catch (err) {
-    console.error('Mic access denied:', err);
-    toast('Microphone access denied');
+    console.error('Microphone access denied:', err);
+    toast('Microphone access denied. Please allow microphone permissions in your browser.');
+    const statusMain = $('voice-status-main');
+    if (statusMain) {
+      statusMain.textContent = 'Microphone access denied';
+      statusMain.className = 'voice-status-main';
+    }
   }
 }
 
-function stopInputVoice() {
-  if (inputMediaRecorder && isInputVoiceActive) {
-    inputMediaRecorder.stop();
-    inputMediaRecorder.stream.getTracks().forEach(t => t.stop());
-    isInputVoiceActive = false;
-    $('btn-input-mic')?.classList.remove('active');
+function stopVoiceModalRecording() {
+  if (!isVoiceModalRecording || !voiceModalRecorder) return;
+
+  isVoiceModalRecording = false;
+
+  // Stop recording & stream
+  try {
+    voiceModalRecorder.stop();
+  } catch (err) {}
+
+  if (voiceModalStream) {
+    voiceModalStream.getTracks().forEach(t => t.stop());
+    voiceModalStream = null;
+  }
+
+  // UI Updates: processing state
+  $('voice-mic-container')?.classList.remove('listening');
+  const micBtn = $('btn-voice-modal-mic');
+  if (micBtn) {
+    micBtn.classList.remove('recording');
+    micBtn.disabled = true;
+  }
+  $('voice-icon-stop')?.classList.add('hidden');
+  $('voice-icon-mic')?.classList.remove('hidden');
+  $('voice-wave-bars')?.classList.add('hidden');
+  $('btn-voice-modal-stop')?.classList.add('hidden');
+
+  const statusMain = $('voice-status-main');
+  const statusSub = $('voice-status-sub');
+  if (statusMain) {
+    statusMain.className = 'voice-status-main transcribing';
+    statusMain.textContent = 'Transcribing…';
+  }
+  if (statusSub) {
+    statusSub.textContent = `Transcribing ${getVoiceModalLangText()} speech to native script…`;
   }
 }
 
-async function onInputRecordStop() {
-  const btn = $('btn-input-mic');
-  const blob = new Blob(inputChunks, { type: getSupportedMimeType() || 'audio/webm' });
-  const originalHtml = btn.innerHTML;
-  btn.innerHTML = `<span class="loading-spinner-small"></span>`;
-  btn.disabled = true;
+async function onVoiceModalRecordStop() {
+  const blob = new Blob(voiceModalChunks, { type: getSupportedMimeType() || 'audio/webm' });
+  const selectedLang = $('voice-popup-lang')?.value || currentLang || 'ta-IN';
 
   const formData = new FormData();
-  formData.append('audio', blob, 'recording.webm');
+  formData.append('audio', blob, 'speech.webm');
+  formData.append('language', selectedLang);
 
   try {
     const res = await fetch('/api/transcribe', {
@@ -1506,18 +1663,70 @@ async function onInputRecordStop() {
       body: formData
     });
 
-    if (!res.ok) throw new Error('Transcription failed');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Transcription failed');
+    }
+
     const data = await res.json();
-    if (data.transcript) {
-      $('custom-phrase').value = data.transcript;
-      $('custom-phrase').dispatchEvent(new Event('input'));
+    if (data.transcript && data.transcript.trim()) {
+      const recognizedText = data.transcript.trim();
+
+      // Put transcribed text into phrase input (leaves trainer language unchanged)
+      const customInput = $('custom-phrase');
+      if (customInput) {
+        customInput.value = recognizedText;
+        customInput.dispatchEvent(new Event('input'));
+      }
+
+      const statusMain = $('voice-status-main');
+      const statusSub = $('voice-status-sub');
+      if (statusMain) {
+        statusMain.className = 'voice-status-main success';
+        statusMain.textContent = '✓ Transcribed Successfully!';
+      }
+      if (statusSub) {
+        statusSub.textContent = `"${recognizedText}"`;
+      }
+
+      toast(`Speech transcribed into ${getVoiceModalLangText()}!`);
+
+      setTimeout(() => {
+        closeVoiceInputModal();
+      }, 950);
+    } else {
+      const statusMain = $('voice-status-main');
+      const statusSub = $('voice-status-sub');
+      if (statusMain) {
+        statusMain.className = 'voice-status-main';
+        statusMain.textContent = 'No voice detected';
+      }
+      if (statusSub) {
+        statusSub.textContent = 'Please tap the mic and try speaking again.';
+      }
+      if ($('btn-voice-modal-mic')) $('btn-voice-modal-mic').disabled = false;
+      if ($('voice-popup-lang')) $('voice-popup-lang').disabled = false;
     }
   } catch (err) {
+    console.error('Transcription error:', err);
     toast('Transcription failed: ' + err.message);
-  } finally {
-    btn.innerHTML = originalHtml;
-    btn.disabled = false;
+    const statusMain = $('voice-status-main');
+    const statusSub = $('voice-status-sub');
+    if (statusMain) {
+      statusMain.className = 'voice-status-main';
+      statusMain.textContent = 'Transcription Error';
+    }
+    if (statusSub) {
+      statusSub.textContent = err.message || 'Could not process audio. Please try again.';
+    }
+    if ($('btn-voice-modal-mic')) $('btn-voice-modal-mic').disabled = false;
+    if ($('voice-popup-lang')) $('voice-popup-lang').disabled = false;
   }
+}
+
+// Fallback alias for existing references
+function toggleInputVoice() {
+  openVoiceInputModal();
 }
 
 // ─── Utilities ───────────────────────────────────────────────

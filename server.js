@@ -785,14 +785,15 @@ app.delete('/api/history/:id', auth.requireAuth, async (req, res) => {
 ───────────────────────────────────────────────────────────── */
 app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   const audioBuffer = req.file?.buffer;
-  console.log(`Transcribe request received. Audio size: ${audioBuffer?.length || 0} bytes. Mimetype: ${req.file?.mimetype}`);
+  const language = req.body?.language || null;
+  console.log(`Transcribe request received. Audio size: ${audioBuffer?.length || 0} bytes. Language: ${language}. Mimetype: ${req.file?.mimetype}`);
 
   if (!audioBuffer) {
     return res.status(400).json({ error: 'Audio is required' });
   }
 
   try {
-    const transcript = await transcribeAudio(audioBuffer);
+    const transcript = await transcribeAudio(audioBuffer, language);
     res.json({ transcript });
   } catch (err) {
     console.error('Transcription error:', err);

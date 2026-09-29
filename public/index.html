@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="https://thumbs.dreamstime.com/b/pronunciation-icon-dialect-315326067.jpg">
   <link rel="stylesheet" href="style.css"/>
   <!-- Google Identity Services for Google OAuth -->
   <script src="https://accounts.google.com/gsi/client" async defer onload="window.onGoogleLibraryLoad && window.onGoogleLibraryLoad()"></script>
@@ -193,7 +194,7 @@
         <div class="practice-top-bar">
           <button class="btn-back-phrase" id="btn-back" title="Change phrase or language">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            <span>Change Phrase</span>
+            <span>Change Phrase/Back</span>
           </button>
         </div>
 
@@ -558,6 +559,104 @@
         </button>
       </form>
 
+    </div>
+  </div>
+
+  <!-- Voice-to-Text Mini Pop-up Modal -->
+  <div class="voice-modal-backdrop hidden" id="voice-input-modal" role="dialog" aria-modal="true" aria-labelledby="voice-modal-title">
+    <div class="voice-modal-card glass-panel">
+      <!-- Header -->
+      <div class="voice-modal-header">
+        <div class="voice-modal-title-wrap">
+          <div class="voice-modal-icon-badge">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 id="voice-modal-title" class="voice-modal-title">Voice Typing</h3>
+            <p class="voice-modal-subtitle">Speak and auto-transcribe in your native language</p>
+          </div>
+        </div>
+        <button type="button" class="btn-modal-close" id="btn-close-voice-modal" title="Close" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Language selector prompt -->
+      <div class="voice-lang-section">
+        <label for="voice-popup-lang" class="voice-lang-label">Which Indian language are you speaking?</label>
+        <div class="select-wrap">
+          <select id="voice-popup-lang">
+            <option value="ta-IN">Tamil (தமிழ்)</option>
+            <option value="mr-IN">Marathi (मराठी)</option>
+            <option value="hi-IN">Hindi (हिन्दी)</option>
+            <option value="te-IN">Telugu (తెలుగు)</option>
+            <option value="ml-IN">Malayalam (മലയാളം)</option>
+            <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
+            <option value="bn-IN">Bengali (বাংলা)</option>
+            <option value="gu-IN">Gujarati (ગુજરાતી)</option>
+            <option value="pa-IN">Punjabi (ਪੰਜਾਬੀ)</option>
+            <option value="or-IN">Odia (ଓଡ଼ିଆ)</option>
+            <option value="ur-IN">Urdu (اردو)</option>
+            <option value="as-IN">Assamese (অসমীয়া)</option>
+            <option value="sa-IN">Sanskrit (संस्कृतम्)</option>
+            <option value="en-IN">Indian English (English - India)</option>
+          </select>
+          <span class="select-arrow">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </span>
+        </div>
+      </div>
+
+      <!-- Animated Mic Central Action Zone -->
+      <div class="voice-mic-zone">
+        <div class="voice-mic-pulse-container" id="voice-mic-container">
+          <div class="voice-pulse-ring ring-1"></div>
+          <div class="voice-pulse-ring ring-2"></div>
+          <div class="voice-pulse-ring ring-3"></div>
+          <button type="button" class="btn-voice-action-mic" id="btn-voice-modal-mic" title="Tap to start voice typing">
+            <svg class="mic-svg-icon" id="voice-icon-mic" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+            <span class="voice-icon-stop hidden" id="voice-icon-stop">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>
+            </span>
+          </button>
+        </div>
+
+        <!-- Dynamic Animated Sound Wave Visualizer Bars -->
+        <div class="voice-wave-bars hidden" id="voice-wave-bars">
+          <span class="vbar vbar-1"></span>
+          <span class="vbar vbar-2"></span>
+          <span class="vbar vbar-3"></span>
+          <span class="vbar vbar-4"></span>
+          <span class="vbar vbar-5"></span>
+          <span class="vbar vbar-6"></span>
+          <span class="vbar vbar-7"></span>
+        </div>
+
+        <!-- Dynamic Status Message & Guidance -->
+        <div class="voice-status-wrap">
+          <div class="voice-status-main" id="voice-status-main">Select language &amp; tap mic to speak</div>
+          <div class="voice-status-sub" id="voice-status-sub">Listening will transcribe directly into your chosen language</div>
+        </div>
+      </div>
+
+      <!-- Action Footer -->
+      <div class="voice-modal-footer">
+        <button type="button" class="btn-secondary btn-sm" id="btn-voice-modal-cancel">Cancel</button>
+        <button type="button" class="btn-primary btn-sm hidden" id="btn-voice-modal-stop">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>
+          <span>Stop &amp; Transcribe</span>
+        </button>
+      </div>
     </div>
   </div>
 
